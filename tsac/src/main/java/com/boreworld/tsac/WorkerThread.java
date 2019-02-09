@@ -16,10 +16,15 @@ public class WorkerThread extends Thread {
 
     private static final Object wakeLock = new Object();
     private static WorkerThread instance;
+    private boolean paused = false;
+    private boolean isRunning = true;
 
     public static WorkerThread getInstance() {
         if (instance==null || instance.getState()==State.TERMINATED) {
             initInstance();
+            try {
+                instance.start();
+            } catch (Exception e) {}
         }
         return instance;
     }
@@ -61,5 +66,33 @@ public class WorkerThread extends Thread {
 
     @Override
     public void run() {
+
+        synchronized (wakeLock) {
+            while (isRunning) {
+                if (paused) {
+                    try {
+                        wakeLock.wait();
+                    } catch (Exception e) {
+                    }
+                }
+            }
+        }
     }
+
+    public void pause() {
+        paused = true;
+    }
+
+    public void unPause() {
+        paused = false;
+        try {
+            wakeLock.notify();
+        } catch (Exception e) {
+        }
+    }
+
+    public void kill() {
+        isRunning = false;
+    }
+
 }
